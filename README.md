@@ -102,6 +102,8 @@ Make sure to install to python used by vim.
 $ pip install -r requirements.txt
 ```
 
+(Optional) If using CJK (Chinese, Japanese or Korean), set `let g:xavian_cjk = 1`.
+
 ## License
 
 GNU General Public License v3.0
