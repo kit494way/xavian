@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+basedir=$(cd $(dirname ${BASH_SOURCE}); pwd)
+export PYTHONPATH="${basedir}/../python"
+exec python -m xavian "$@"
