@@ -19,7 +19,7 @@ function! xavian#search(...) abort
   let query = join(a:000)
 python3 << EOD
 import xavian
-cjk = vim.eval("s:is_cjk_enabled()") == 1
+cjk = vim.eval("s:is_cjk_enabled()") == "1"
 results = []
 with xavian.Searcher(vim.eval("s:xavian_dbpath()"), cjk=cjk) as searcher:
   results = searcher.search(vim.eval("query"))
@@ -39,7 +39,7 @@ python3 << EOD
 import os
 import vim
 import xavian
-cjk = vim.eval("s:is_cjk_enabled()") == 1
+cjk = vim.eval("s:is_cjk_enabled()") == "1"
 with xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk) as indexer:
   indexer.index(vim.eval("l:path"))
 EOD
