@@ -15,13 +15,11 @@
 " You should have received a copy of the GNU General Public License
 " along with Xavian.  If not, see <https://www.gnu.org/licenses/>.
 
-let g:xavian_cjk = 0
-
 function! xavian#search(...) abort
   let query = join(a:000)
 python3 << EOD
 import xavian
-cjk = vim.eval("g:xavian_cjk") == 1
+cjk = vim.eval("s:is_cjk_enabled()") == 1
 results = []
 with xavian.Searcher(vim.eval("s:xavian_dbpath()"), cjk=cjk) as searcher:
   results = searcher.search(vim.eval("query"))
@@ -41,7 +39,7 @@ python3 << EOD
 import os
 import vim
 import xavian
-cjk = vim.eval("g:xavian_cjk") == 1
+cjk = vim.eval("s:is_cjk_enabled()") == 1
 with xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk) as indexer:
   indexer.index(vim.eval("l:path"))
 EOD
@@ -56,4 +54,8 @@ function! s:xavian_dbpath() abort
     call mkdir(xavin_dir, "p")
   endif
   return xavin_dir . "/db"
+endfunction
+
+function! s:is_cjk_enabled() abort
+  return exists("g:xavian_cjk") && g:xavian_cjk == 1
 endfunction
