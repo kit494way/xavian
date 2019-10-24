@@ -16,15 +16,20 @@
 # along with Xavian.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
+import logging
 import sys
 import unicodedata
 
 import xapian
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 
 class Searcher(object):
     def __init__(self, dbpath, *, cjk=False, page_size=20):
-        self.db = xapian.Database(dbpath)
+        self._db = None
+        self.dbpath = dbpath
         self.cjk = cjk
 
         query_parser = xapian.QueryParser()
@@ -38,6 +43,30 @@ class Searcher(object):
             else query_parser.FLAG_DEFAULT
         )
 
+        self.open()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def open(self):
+        if self._db is None:
+            self._db = xapian.Database(self.dbpath)
+            logger.info("Open DB {}.".format(self.dbpath))
+        else:
+            logger.warn("DB {} is already opened.".format(self.dbpath))
+
+        return self
+
+    def close(self):
+        if self._db is not None:
+            self._db.close()
+            logger.info("Close DB {}.".format(self.dbpath))
+        else:
+            logger.warn("DB {} is already closed.".format(self.dbpath))
+
     def search(self, query_string, offset=0, page_size=20):
         """Search documents by `query_string`.
 
@@ -49,7 +78,7 @@ class Searcher(object):
         Returns:
             list(dict): Results of search.
         """
-        enqire = xapian.Enquire(self.db)
+        enqire = xapian.Enquire(self._db)
         enqire.set_query(self.query(query_string))
 
         return [

@@ -37,15 +37,38 @@ class Indexer(object):
 
     def __init__(self, dbpath, *, cjk=False):
         """Initialize indexer with dbpath."""
-        self.db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
-        logger.info("Open db {}".format(dbpath))
-
+        self._db = None
+        self.dbpath = dbpath
         self.term_generator = xapian.TermGenerator()
         self.term_generator.set_stemmer(xapian.Stem("en"))
 
         if cjk:
             self.term_generator.set_flags(self.term_generator.FLAG_CJK_NGRAM)
             logger.info("FLAG_CJK_NGRAM enabled")
+        self.open()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def open(self):
+        if self._db is None:
+            self._db = xapian.WritableDatabase(self.dbpath, xapian.DB_CREATE_OR_OPEN)
+            logger.info("Open DB {}.".format(self.dbpath))
+        else:
+            logger.warn("DB {} is already opened.".format(self.dbpath))
+
+        return self
+
+    def close(self):
+        if self._db is not None:
+            self._db.close()
+            self._db = None
+            logger.info("Close DB {}.".format(self.dbpath))
+        else:
+            logger.warn("DB {} is already closed.".format(self.dbpath))
 
     def index_doc(self, doc, doc_id, metadata=None):
         """Index text.
@@ -86,7 +109,7 @@ class Indexer(object):
 
         id_term = "Q" + doc_id
         xapian_doc.add_boolean_term(id_term)
-        self.db.replace_document(id_term, xapian_doc)
+        self._db.replace_document(id_term, xapian_doc)
 
         logger.info(
             "Index {}, id {}".format(

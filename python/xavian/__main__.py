@@ -41,8 +41,8 @@ def cli(verbose):
 @click.argument("path")
 @click.option("--cjk/--no-cjk", default=False)
 def index_cmd(dbpath, path, cjk):
-    indexer = index.Indexer(dbpath, cjk=cjk)
-    indexer.index(path)
+    with index.Indexer(dbpath, cjk=cjk) as indexer:
+        indexer.index(path)
 
 
 @click.command("search")
@@ -50,9 +50,9 @@ def index_cmd(dbpath, path, cjk):
 @click.argument("query")
 @click.option("--cjk/--no-cjk", default=False)
 def search_cmd(dbpath, query, cjk):
-    searcher = search.Searcher(dbpath, cjk=cjk)
-    for r in searcher.search(query):
-        print(r)
+    with search.Searcher(dbpath, cjk=cjk) as searcher:
+        for r in searcher.search(query):
+            print(r)
 
 
 cli.add_command(index_cmd)

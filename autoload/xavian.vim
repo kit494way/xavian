@@ -22,8 +22,9 @@ function! xavian#search(...) abort
 python3 << EOD
 import xavian
 cjk = vim.eval("g:xavian_cjk") == 1
-searcher = xavian.Searcher(vim.eval("s:xavian_dbpath()"), cjk=cjk)
-results = searcher.search(vim.eval("query"))
+results = []
+with xavian.Searcher(vim.eval("s:xavian_dbpath()"), cjk=cjk) as searcher:
+  results = searcher.search(vim.eval("query"))
 paths = "\\n".join("{}:1:{}".format(result["path"], result["title"]) for result in results)
 vim.command(":copen")
 vim.command(':silent cgetexpr "{}"'.format(paths))
@@ -41,8 +42,8 @@ import os
 import vim
 import xavian
 cjk = vim.eval("g:xavian_cjk") == 1
-indexer = xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk)
-indexer.index(vim.eval("path"))
+with xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk) as indexer:
+  indexer.index(vim.eval("l:path"))
 EOD
 endfunction
 
