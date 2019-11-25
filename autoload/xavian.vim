@@ -49,11 +49,11 @@ function! s:xavian_dbpath() abort
   if exists("g:xavian_dbpath")
     return g:xavian_dbpath
   endif
-  let xavin_dir = expand("~/.config/xavian")
-  if !exists(xavin_dir)
-    call mkdir(xavin_dir, "p")
+  let xavian_dir = expand("~/.config/xavian")
+  if !exists(xavian_dir)
+    call mkdir(xavian_dir, "p")
   endif
-  return xavin_dir . "/db"
+  return xavian_dir . "/db"
 endfunction
 
 function! s:is_cjk_enabled() abort
