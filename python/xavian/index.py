@@ -161,7 +161,7 @@ class Indexer(object):
 
     def _walk(self, directory):
         for dirpath, dirnames, filenames in os.walk(directory):
-            dirnames = [d for d in dirnames if not d.startswith(".")]
+            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
             yield from (
                 os.path.join(dirpath, f)
                 for f in filenames
