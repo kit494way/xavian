@@ -132,7 +132,11 @@ class Indexer(object):
 
     def index_file(self, path):
         """Index a file."""
-        self._index_file_abspath(os.path.abspath(path))
+        abspath = os.path.abspath(path)
+        if path.endswith(".md"):
+            self._index_markdown(abspath)
+        else:
+            self._index_text(abspath)
 
     def index_dir(self, directory):
         """Index files in the `directory` recursively.
@@ -146,7 +150,7 @@ class Indexer(object):
         for filepath in self._walk(directory):
             processed_count += 1
             try:
-                self._index_file_abspath(filepath)
+                self.index_file(filepath)
                 indexed_count += 1
             except Exception as e:
                 logger.error(e)
@@ -167,12 +171,6 @@ class Indexer(object):
                 for f in filenames
                 if any(map(f.endswith, self.extensions))
             )
-
-    def _index_file_abspath(self, filepath):
-        if filepath.endswith(".md"):
-            self._index_markdown(filepath)
-        else:
-            self._index_text(filepath)
 
     def _index_markdown(self, filepath):
         doc_id = filepath
