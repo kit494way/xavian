@@ -1,2 +1,2 @@
 from .search import Searcher
-from .index import Indexer
+from .index import Indexer, IncrementalIndexer

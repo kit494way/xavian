@@ -1,4 +1,4 @@
-" (c) 2019, KITAGAWA Yasutaka <kit494way@gmail.com>
+" (c) 2019-2020 KITAGAWA Yasutaka <kit494way@gmail.com>
 "
 " This file is part of Xavian.
 "
@@ -30,18 +30,36 @@ EOD
 endfunction
 
 function! xavian#index(...) abort
-  if a:0
-    let l:path = expand(a:1)
+  let args = filter(copy(a:000), "match(v:val, '^[^-]') == 0")
+
+  if len(args)
+    let path = expand(args[0])
   else
-    let l:path = expand("%:p")
+    let path = expand("%:p")
   endif
+
+  if len(filter(copy(a:000), "match(v:val, '^--no-increment$') == 0")) > 0
+    let increment = 0
+  elseif len(filter(copy(a:000), "match(v:val, '^--increment$') == 0")) > 0
+    let increment = 1
+  elseif exists("g:xavian_incremental_index")
+    let increment = g:xavian_incremental_index
+  else
+    let increment = 0
+  endif
+
 python3 << EOD
 import os
 import vim
 import xavian
 cjk = vim.eval("s:is_cjk_enabled()") == "1"
-with xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk) as indexer:
-  indexer.index(vim.eval("l:path"))
+increment = vim.eval("increment") == "1"
+if increment:
+  indexer = xavian.IncrementalIndexer(vim.eval("s:xavian_dbpath()"), cjk=cjk)
+else:
+  indexer = xavian.Indexer(vim.eval("s:xavian_dbpath()"), cjk=cjk)
+with indexer as idxer:
+  idxer.index(vim.eval("path"))
 EOD
 endfunction
 

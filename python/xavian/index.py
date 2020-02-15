@@ -1,4 +1,4 @@
-# (c) 2019, KITAGAWA Yasutaka <kit494way@gmail.com>
+# (c) 2019-2020 KITAGAWA Yasutaka <kit494way@gmail.com>
 #
 # This file is part of Xavian.
 #
@@ -18,8 +18,10 @@
 import json
 import logging
 import os
+import time
 import unicodedata
 from datetime import datetime
+from typing import Iterable, Union
 
 import frontmatter
 import pytz
@@ -117,18 +119,45 @@ class Indexer(object):
             )
         )
 
-    def index(self, path):
-        """Index files.
-
-        Args:
-            path (str): Path to a file or directory.
-        """
-        if os.path.isfile(path):
-            self.index_file(path)
-        elif os.path.isdir(path):
-            self.index_dir(path)
+    def index(self, path: Union[str, Iterable[str]]):
+        """Index files."""
+        if isinstance(path, str):
+            if os.path.isfile(path):
+                self.index_file(path)
+            elif os.path.isdir(path):
+                self.index_dir(path)
+            else:
+                logger.error("No such a file or directory.")
+        elif iter(path):
+            self.index_finder(path)
         else:
             logger.error("No such a file or directory.")
+            raise TypeError("path must be path string or iterable.")
+
+    def index_finder(self, finder: Iterable[str]):
+        """Index files returned by finder.
+
+        Args:
+            finder: Iterable object which returns file paths.
+        """
+        processed_count = 0
+        indexed_count = 0
+        failed_count = 0
+        for filepath in finder:
+            processed_count += 1
+            try:
+                self.index_file(filepath)
+                indexed_count += 1
+            except Exception as e:
+                logger.error(e)
+                logger.warn("Error occured, skip {}".format(filepath))
+                failed_count += 1
+
+        logger.info(
+            "Index files found by {}, processed {}, indexed {}, failed {}.".format(
+                finder, processed_count, indexed_count, failed_count
+            )
+        )
 
     def index_file(self, path):
         """Index a file."""
@@ -144,33 +173,8 @@ class Indexer(object):
         Ignore subdirectories starts with period.
         Ignore files not ends with any extensions in `self.extensions`.
         """
-        processed_count = 0
-        indexed_count = 0
-        failed_count = 0
-        for filepath in self._walk(directory):
-            processed_count += 1
-            try:
-                self.index_file(filepath)
-                indexed_count += 1
-            except Exception as e:
-                logger.error(e)
-                logger.warn("Error occured, skip {}".format(filepath))
-                failed_count += 1
-
-        logger.info(
-            "Index directory {}, processed {}, indexed {}, failed {}.".format(
-                directory, processed_count, indexed_count, failed_count
-            )
-        )
-
-    def _walk(self, directory):
-        for dirpath, dirnames, filenames in os.walk(directory):
-            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
-            yield from (
-                os.path.join(dirpath, f)
-                for f in filenames
-                if any(map(f.endswith, self.extensions))
-            )
+        with IndexTimestampLogger(directory) as timestamp_logger:
+            self.index_finder(FileFinder(directory))
 
     def _index_markdown(self, filepath):
         doc_id = filepath
@@ -186,3 +190,97 @@ class Indexer(object):
         with open(filepath, "r", encoding="utf-8") as fin:
             metadata = {"path": filepath}
             self.index_doc(fin.read(), doc_id, metadata)
+
+
+class IncrementalIndexer:
+    """Index files modified or created after last indexing."""
+
+    def __init__(self, dbpath, *, cjk: bool = False):
+        self._indexer = Indexer(dbpath, cjk=cjk)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._indexer.close()
+
+    def index(self, path: str):
+        with IndexTimestampLogger(path) as timestamp_logger:
+            index_path = os.path.abspath(path)
+            finder = ModifiedFileFinder(index_path, timestamp_logger.last_timestamp)
+            logger.info(
+                "Index files that is updated after {}.".format(
+                    timestamp_logger.last_timestamp
+                )
+            )
+            self._indexer.index_finder(finder)
+
+
+class IndexTimestampLogger:
+    """Log index timestamp.
+
+    Attributes:
+        last_timestamp: The timestamp of index_path was indexed last time.
+    """
+
+    def __init__(self, index_path):
+        self._index_path = os.path.abspath(index_path)
+        self.last_timestamp: float = 0
+        self._path_timestamp = {self._index_path: self.last_timestamp}
+        self._timestamp_file = os.path.expanduser(
+            "~/.config/xavian/index_timestamp.json"
+        )
+
+        if os.path.exists(self._timestamp_file):
+            try:
+                with open(self._timestamp_file, "r", encoding="utf8") as fin:
+                    self._path_timestamp.update(json.load(fin))
+            except Exception as e:
+                logger.warning("Failed to load last indexed timestamp.")
+
+        self.last_timestamp = self._path_timestamp[self._index_path]
+
+    def __enter__(self):
+        self._index_timestamp = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        with open(self._timestamp_file, "w", encoding="utf8") as fout:
+            self._path_timestamp.update({self._index_path: self._index_timestamp})
+            json.dump(self._path_timestamp, fout)
+
+
+class FileFinder:
+    """Iterable that contains indexable file paths in a directory."""
+
+    extensions = (".md", ".rst", ".txt")
+
+    def __init__(self, directory):
+        self._directory = directory
+
+    def __iter__(self):
+        for dirpath, dirnames, filenames in os.walk(self._directory):
+            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+            yield from (
+                os.path.join(dirpath, f)
+                for f in filenames
+                if any(map(f.endswith, self.extensions))
+            )
+
+    def __str__(self):
+        return '{}("{}")'.format(self.__class__, self._directory)
+
+
+class ModifiedFileFinder:
+    """Iterable that contains modified indexable file paths in a directory.
+
+    Iterator of ModifiedFileFinder(directory, timestamp) yield files modified
+    after `timestamp`.
+    """
+
+    def __init__(self, directory: str, timestamp: float):
+        self._finder = FileFinder(directory)
+        self._timestamp = timestamp
+
+    def __iter__(self):
+        return (f for f in self._finder if os.path.getmtime(f) > self._timestamp)

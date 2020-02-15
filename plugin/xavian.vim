@@ -1,4 +1,4 @@
-" (c) 2019, KITAGAWA Yasutaka <kit494way@gmail.com>
+" (c) 2019-2020 KITAGAWA Yasutaka <kit494way@gmail.com>
 "
 " This file is part of Xavian.
 "
@@ -30,4 +30,4 @@ sys.path.insert(0, vim.eval("s:pypath"))
 EOD
 
 command! -nargs=+ XavianSearch :call xavian#search(<f-args>)
-command! -nargs=1 -complete=file XavianIndex :call xavian#index(<f-args>)
+command! -nargs=+ -complete=file XavianIndex :call xavian#index(<f-args>)

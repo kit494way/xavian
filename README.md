@@ -14,6 +14,20 @@ Curruntly supports .md, .rst, .txt files.
 
 This may take some time.
 
+### Incremental index
+
+With `--increment` option, you can index only files that is modified or created after last indexed time.
+
+```vim
+:XavianIndex --increment /path/to/directory
+```
+
+With `--no-increment`, index all files.
+
+Default behavior of `:XavianIndex /path/to/directory` is changed by `g:xavian_incremental_index`.
+If `g:xavian_incremental_index = 1`, `:XavianIndex /path/to/directory` execute incremental index.
+Default, `:XavianIndex /path/to/directory` index all files.
+
 ### Search Files
 
 ```vim
@@ -25,7 +39,7 @@ Max results is 20.
 
 ### CLI
 
-Thre is a command line tool, bin/xavian .
+There is a command line tool, bin/xavian .
 
 ## Install
 

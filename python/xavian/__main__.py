@@ -1,4 +1,4 @@
-# (c) 2019, KITAGAWA Yasutaka <kit494way@gmail.com>
+# (c) 2019-2020 KITAGAWA Yasutaka <kit494way@gmail.com>
 #
 # This file is part of Xavian.
 #
@@ -22,6 +22,9 @@ import click
 
 from . import index, search
 
+logger = logging.getLogger("xavian")
+logger.addHandler(logging.NullHandler())
+
 
 @click.group()
 @click.option("-v", "--verbose", count=True)
@@ -32,7 +35,7 @@ def cli(verbose):
         level = logging.DEBUG
 
     if verbose > 0:
-        FORMAT = "%(levelname)s:%(asctime)s:%(message)s"
+        FORMAT = "%(levelname)s:%(asctime)s:%(name)s:%(message)s"
         logging.basicConfig(level=level, format=FORMAT)
 
 
@@ -40,9 +43,16 @@ def cli(verbose):
 @click.argument("dbpath")
 @click.argument("path")
 @click.option("--cjk/--no-cjk", default=False)
-def index_cmd(dbpath, path, cjk):
-    with index.Indexer(dbpath, cjk=cjk) as indexer:
-        indexer.index(path)
+@click.option("--increment/--no-increment", default=False)
+def index_cmd(dbpath, path, cjk, increment):
+    if increment:
+        logger.info("Incremental indexing enabled.")
+        indexer = index.IncrementalIndexer(dbpath, cjk=cjk)
+    else:
+        indexer = index.Indexer(dbpath, cjk=cjk)
+
+    with indexer as idxer:
+        idxer.index(path)
 
 
 @click.command("search")
